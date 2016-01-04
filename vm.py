@@ -66,7 +66,12 @@ class VirtualMachine:
         pass
 
     def o_eq(self, a, b, c):
-        pass
+        boolean = self.get_value(b) == self.get_value(c)
+        if boolean:
+            val = 1
+        else:
+            val = 0
+        self.registers[a - OVERFLOW_VALUE] = val
 
     def o_gt(self, a, b, c):
         pass
