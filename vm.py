@@ -1,20 +1,23 @@
 import inspect
 
 
+OVERFLOW_VALUE = 32768
+ADDR_BITS = 15
+NUM_REGS = 8
+debug = False
+wmemDebug = False
+
 def parse_two_bytes(two_bytes):
     most_sig = 256 * two_bytes[1]
     least_sig = two_bytes[0]
     return most_sig + least_sig
 
-OVERFLOW_VALUE = 32768
-ADDR_BITS = 15
-NUM_REGS = 8
-
 class VirtualMachine:
     def __init__(self):
         self.pc = 0
         self.registers = [0] * NUM_REGS
-        self.memory = [0] * (ADDR_BITS ** 2)
+        self.memory = [0] * (2 ** ADDR_BITS)
+        self.line_buf = ""
         self.stack = []
         self.text = []
         self.commands =  [self.o_halt, self.o_set, self.o_push, self.o_pop, self.o_eq, self.o_gt, self.o_jmp, self.o_jt,\
@@ -23,6 +26,8 @@ class VirtualMachine:
 
     def run_program(self, fname):
         program = self.parse(fname)
+        for i in range(len(program)):
+            self.memory[i] = program[i]
         while(True):
             opcode = program[self.pc]
             arg_index = self.pc + 1
@@ -33,6 +38,8 @@ class VirtualMachine:
                 args.append(program[arg_index])
                 num_args -= 1
                 arg_index += 1
+            if debug:
+                print("executing: ",self.commands[opcode].__name__, args, "pc =", self.pc, "stack =", self.stack)
             self.pc = arg_index
             self.exec_op(opcode, args)
 
@@ -60,10 +67,12 @@ class VirtualMachine:
         self.registers[a - OVERFLOW_VALUE] = self.get_value(b)
 
     def o_push(self, a):
-        pass
+        self.stack.append(self.get_value(a))
 
     def o_pop(self, a):
-        pass
+        if not self.stack:
+            raise ValueError("stack empty")
+        self.registers[a - OVERFLOW_VALUE] = self.stack.pop()
 
     def o_eq(self, a, b, c):
         boolean = self.get_value(b) == self.get_value(c)
@@ -74,9 +83,16 @@ class VirtualMachine:
         self.registers[a - OVERFLOW_VALUE] = val
 
     def o_gt(self, a, b, c):
-        pass
+        boolean = self.get_value(b) > self.get_value(c)
+        if boolean:
+            val = 1
+        else:
+            val = 0
+        self.registers[a - OVERFLOW_VALUE] = val
 
     def o_jmp(self, a):
+        if debug:
+            print("jmp", a)
         self.pc = self.get_value(a)
 
     def o_jt(self, a, b):
@@ -89,40 +105,59 @@ class VirtualMachine:
 
     def o_add(self, a, b, c):
         self.registers[a - OVERFLOW_VALUE] = \
-                self.get_value(b) + self.get_value(c) % OVERFLOW_VALUE
+                (self.get_value(b) + self.get_value(c)) % OVERFLOW_VALUE
 
     def o_mult(self, a, b, c):
-        pass
+        self.registers[a - OVERFLOW_VALUE] = \
+                (self.get_value(b) * self.get_value(c)) % OVERFLOW_VALUE
 
     def o_mod(self, a, b, c):
-        pass
+        self.registers[a - OVERFLOW_VALUE] = \
+                self.get_value(b) % self.get_value(c)
 
     def o_and(self, a, b, c):
-        pass
+        self.registers[a - OVERFLOW_VALUE] = \
+                self.get_value(b) & self.get_value(c)
 
     def o_or(self, a, b, c):
-        pass
+        self.registers[a - OVERFLOW_VALUE] = \
+                self.get_value(b) | self.get_value(c)
 
     def o_not(self, a, b):
-        pass
+        self.registers[a - OVERFLOW_VALUE] = ~self.get_value(b) % OVERFLOW_VALUE
 
     def o_rmem(self, a, b):
-        pass
+        self.registers[a - OVERFLOW_VALUE] = self.memory[self.get_value(b)]
 
     def o_wmem(self, a, b):
-        pass
+        if wmemDebug:
+            print("wmem: ", a, b)
+        self.memory[self.get_value(a)] = self.get_value(b)
 
     def o_call(self, a):
-        pass
+        return
+        print("Calling to", a)
+        self.o_push(self.pc)
+        self.o_jmp(self.get_value(a))
 
     def o_ret(self):
-        pass
+        return
+        if self.stack:
+            dest = self.stack.pop()
+            print("Returning", dest)
+            self.o_jmp(dest)
+        else:
+            self.o_halt()
 
     def o_out(self, a):
-        print(chr(a), end='')
+        print(chr(self.get_value(a)), end='')
 
     def o_in(self, a):
-        pass
+        if not self.line_buf:
+            self.line_buf = input()
+        else:
+            self.registers[a - OVERFLOW_VALUE] = self.line_buf[0]
+            self.line_buf = self.line_buf[1:]
 
     def o_noop(self):
         pass
