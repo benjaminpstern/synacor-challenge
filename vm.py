@@ -6,6 +6,7 @@ ADDR_BITS = 15
 NUM_REGS = 8
 debug = False
 wmemDebug = False
+callretDebug = False
 
 def parse_two_bytes(two_bytes):
     most_sig = 256 * two_bytes[1]
@@ -29,13 +30,13 @@ class VirtualMachine:
         for i in range(len(program)):
             self.memory[i] = program[i]
         while(True):
-            opcode = program[self.pc]
+            opcode = self.memory[self.pc]
             arg_index = self.pc + 1
             num_args_incl_self = len(inspect.getargspec(self.commands[opcode]).args)
             num_args = num_args_incl_self - 1
             args = []
             while num_args:
-                args.append(program[arg_index])
+                args.append(self.memory[arg_index])
                 num_args -= 1
                 arg_index += 1
             if debug:
@@ -131,20 +132,20 @@ class VirtualMachine:
 
     def o_wmem(self, a, b):
         if wmemDebug:
-            print("wmem: ", a, b)
+            print("wmem: ", a, b, self.get_value(a), self.get_value(b), "prev val", self.memory[self.get_value(a)])
         self.memory[self.get_value(a)] = self.get_value(b)
 
     def o_call(self, a):
-        return
-        print("Calling to", a)
+        if callretDebug:
+            print("Calling to", a)
         self.o_push(self.pc)
         self.o_jmp(self.get_value(a))
 
     def o_ret(self):
-        return
         if self.stack:
             dest = self.stack.pop()
-            print("Returning", dest)
+            if callretDebug:
+                print("Returning", dest)
             self.o_jmp(dest)
         else:
             self.o_halt()
@@ -153,11 +154,12 @@ class VirtualMachine:
         print(chr(self.get_value(a)), end='')
 
     def o_in(self, a):
+        if debug:
+            print("input",self.line_buf)
         if not self.line_buf:
-            self.line_buf = input()
-        else:
-            self.registers[a - OVERFLOW_VALUE] = self.line_buf[0]
-            self.line_buf = self.line_buf[1:]
+            self.line_buf = input() + '\n'
+        self.registers[a - OVERFLOW_VALUE] = ord(self.line_buf[0])
+        self.line_buf = self.line_buf[1:]
 
     def o_noop(self):
         pass
