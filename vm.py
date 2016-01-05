@@ -89,7 +89,7 @@ class VirtualMachine:
             val = 1
         else:
             val = 0
-        self.registers[a - OVERFLOW_VALUE] = val
+        self.o_set(a,val)
 
     def o_jmp(self, a):
         if debug:
@@ -105,30 +105,32 @@ class VirtualMachine:
             self.o_jmp(b)
 
     def o_add(self, a, b, c):
-        self.registers[a - OVERFLOW_VALUE] = \
-                (self.get_value(b) + self.get_value(c)) % OVERFLOW_VALUE
+        result = (self.get_value(b) + self.get_value(c)) % OVERFLOW_VALUE
+        self.o_set(a, result)
 
     def o_mult(self, a, b, c):
-        self.registers[a - OVERFLOW_VALUE] = \
-                (self.get_value(b) * self.get_value(c)) % OVERFLOW_VALUE
+        result = (self.get_value(b) * self.get_value(c)) % OVERFLOW_VALUE
+        self.o_set(a, result)
 
     def o_mod(self, a, b, c):
-        self.registers[a - OVERFLOW_VALUE] = \
-                self.get_value(b) % self.get_value(c)
+        result = self.get_value(b) % self.get_value(c)
+        self.o_set(a, result)
 
     def o_and(self, a, b, c):
-        self.registers[a - OVERFLOW_VALUE] = \
-                self.get_value(b) & self.get_value(c)
+        result = self.get_value(b) & self.get_value(c)
+        self.o_set(a, result)
 
     def o_or(self, a, b, c):
-        self.registers[a - OVERFLOW_VALUE] = \
-                self.get_value(b) | self.get_value(c)
+        result = self.get_value(b) | self.get_value(c)
+        self.o_set(a, result)
 
     def o_not(self, a, b):
-        self.registers[a - OVERFLOW_VALUE] = ~self.get_value(b) % OVERFLOW_VALUE
+        result = ~self.get_value(b) % OVERFLOW_VALUE
+        self.o_set(a, result)
 
     def o_rmem(self, a, b):
-        self.registers[a - OVERFLOW_VALUE] = self.memory[self.get_value(b)]
+        result = self.memory[self.get_value(b)]
+        self.o_set(a, result)
 
     def o_wmem(self, a, b):
         if wmemDebug:
@@ -158,7 +160,7 @@ class VirtualMachine:
             print("input",self.line_buf)
         if not self.line_buf:
             self.line_buf = input() + '\n'
-        self.registers[a - OVERFLOW_VALUE] = ord(self.line_buf[0])
+        self.set(a, ord(self.line_buf[0]))
         self.line_buf = self.line_buf[1:]
 
     def o_noop(self):
