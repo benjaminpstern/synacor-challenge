@@ -73,7 +73,7 @@ class VirtualMachine:
     def o_pop(self, a):
         if not self.stack:
             raise ValueError("stack empty")
-        self.registers[a - OVERFLOW_VALUE] = self.stack.pop()
+        self.o_set(a, self.stack.pop())
 
     def o_eq(self, a, b, c):
         boolean = self.get_value(b) == self.get_value(c)
@@ -81,7 +81,7 @@ class VirtualMachine:
             val = 1
         else:
             val = 0
-        self.registers[a - OVERFLOW_VALUE] = val
+        self.o_set(a, val)
 
     def o_gt(self, a, b, c):
         boolean = self.get_value(b) > self.get_value(c)
